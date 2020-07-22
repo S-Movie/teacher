@@ -1,0 +1,136 @@
+package com.aaa.teacher.service.impl;
+
+import com.aaa.teacher.dao.UserRoleDao;
+import com.aaa.teacher.entity.User;
+import com.aaa.teacher.dao.UserDao;
+import com.aaa.teacher.entity.UserRole;
+import com.aaa.teacher.entity.UserVo;
+import com.aaa.teacher.service.UserService;
+import com.aaa.teacher.shiro.ShiroUtil;
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.baomidou.mybatisplus.plugins.Page;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * <p>
+ * 用户信息表 服务实现类
+ * </p>
+ *
+ * @author AAAStudent
+ * @since 2020-07-17
+ */
+@Service
+public class UserServiceImpl extends ServiceImpl<UserDao, User> implements UserService {
+    @Autowired
+    private UserDao userDao;
+
+    @Autowired
+    private UserRoleDao userRoleDao;
+
+    @Override
+    public List<UserVo> selectUserVoList(Page<UserVo> pageInfo, Map<String, Object> condition) {
+        return userDao.selectUserVoList(pageInfo,condition);
+    }
+
+    @Override
+    public int updateFlagById(Integer userId) {
+        return userDao.updateFlagById(userId);
+    }
+
+    @Override
+    public boolean saveUserAndSalt(User user) {
+        //获取从页面传入的角色id,因为salt是在后台生成，所有由salt属性传入角色id的集合
+        String roleIds = user.getSalt();
+        //生成随机码作为salt
+        String salt = UUID.randomUUID().toString();
+        //获取明文密码
+        String message = user.getPassword();
+        //获取密文密码
+        String encryption = ShiroUtil.encryptionBySalt(salt, message);
+        //设置user的密码属性
+        user.setPassword(encryption);
+        //设置user对象的盐值属性
+        user.setSalt(salt);
+        //将用户保存到数据库
+        Integer insert = userDao.insert(user);
+        //如果插入成功，并且页面传入的角色id不为空
+        return updateRoleUser(user,roleIds);
+    }
+
+
+    @Override
+    public boolean updateUserAndSalt(User user) {
+            String roleIds = user.getSalt();
+            //将用户保存到数据库
+            Integer update = userDao.updateUserColumById(user);
+            //如果插入成功，并且页面传入的角色id不为空
+            if(update>0){
+                boolean b = updateRoleUser(user, roleIds);
+                if(b){
+                    return true;
+                }
+            }
+        return false;
+    }
+
+    /**
+     * 重置密码
+     * @param user
+     * @return
+     */
+    @Override
+    public boolean resetPassword(User user) {
+        //获取从页面传入的角色id,因为salt是在后台生成，所有由salt属性传入角色id的集合
+        String roleIds = user.getSalt();
+        //生成随机码作为 salt
+        String salt = UUID.randomUUID().toString();
+        //获取明文密码
+        String message = user.getPassword();
+        //获取密文密码
+        String encryption = ShiroUtil.encryptionBySalt(salt, message);
+        //设置user的密码属性
+        user.setPassword(encryption);
+        //设置user对象的盐值属性
+        user.setSalt(salt);
+        //将用户保存到数据库
+        Integer reset = userDao.resetPassword(user);
+        if(reset>0){
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @create by: ccz
+     * @description: 更新用户和角色中间表
+     * @create time: 2020/7/20 17:37
+     */
+    private boolean updateRoleUser(User user,String roleIds) {
+        if ( roleIds != null) {
+            //删除此用户原有的角色
+            Wrapper<UserRole> wrapper = new EntityWrapper();
+            wrapper.eq("user_id", user.getUserId());
+            userRoleDao.delete(wrapper);
+            //添加此用户关联的新角色
+            String[] strings = roleIds.split(",");
+            for (String string : strings) {
+                if (string != null && string != "") {
+                    Integer roleID = Integer.parseInt(string);
+                    UserRole userRole = new UserRole();
+                    userRole.setUserId(user.getUserId());
+                    userRole.setRoleId(roleID);
+                    userRoleDao.insert(userRole);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+}

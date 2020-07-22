@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <script th:src="@{/layui/layui.js}"></script>
+    <script th:src="@{/js/jquery-1.8.3.min.js}"></script>
+
+</head>
+<body>
+<div class="demoTable">
+    搜索ID：
+    <div class="layui-inline">
+        <input class="layui-input" name="id" id="demoReload" autocomplete="off">
+    </div>
+    <button class="layui-btn" data-type="reload">搜索</button>
+</div>
+
+<table class="layui-hide" id="test" lay-filter="test"></table>
+<script type="text/html" id="barDemo">
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+</script>
+<!--<script type="text/html" id="add">-->
+    <!--<form action="/userinfo/addTeaUi" method="post">-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">用户ID</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="userid" lay-verify="title" autocomplete="off" placeholder="请输入名字" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">用户名</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="username" lay-verify="title" autocomplete="off" placeholder="请输入性别" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">密码</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="password" lay-verify="title" autocomplete="off" placeholder="请输入年龄" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">盐值</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="salt" lay-verify="title" autocomplete="off" placeholder="请输入年龄" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+        <!--<button class="layui-btn" type="submit" lay-submit  lay-filter="" >添加</button>-->
+    <!--</form>-->
+<!--</script>-->
+<!--<div style="display: none" id="update">-->
+    <!--<form class="layui-form" lay-filter="up" action="/teacher/updateTeaUi" method="post">-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">教师姓名</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="hidden" name="tid">-->
+            <!--<input type="text" name="tname"  lay-verify="title" autocomplete="off" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">教师性别</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="gender" lay-verify="title" autocomplete="off" class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+    <!--<div class="layui-form-item">-->
+        <!--<label class="layui-form-label">教师年龄</label>-->
+        <!--<div class="layui-input-block">-->
+            <!--<input type="text" name="age"  lay-verify="title" autocomplete="off"  class="layui-input">-->
+        <!--</div>-->
+    <!--</div>-->
+        <!--<button class="layui-btn" type="submit" lay-submit  lay-filter="updateDemo" >修改</button>-->
+<!--</form></div>-->
+<script>
+    layui.use([ 'layer', 'table','form'], function(){
+        var layer = layui.layer //弹层
+            ,table = layui.table //表格
+            ,form = layui.form
+        table.render({
+            elem: '#test'
+            ,url:'/userinfo/listTeaLayui'
+            ,page: true //开启分页
+            ,limit:5
+            ,limits:[5,10,15,20]
+            ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+            ,toolbar: 'default'
+            ,cols: [
+                [
+                    {type: 'checkbox'}
+                ,{field:'userid',  title: 'ID', sort: true}
+                ,{field:'username',  title: '用户名'}
+                ,{field:'password',  title: '性别', sort: true}
+                ,{field:'salt',  title: '年龄'}
+                ,{fixed: 'right', width: 165, align:'center', toolbar: '#barDemo'}
+            ]]
+        });
+
+        //监听添加事件
+        table.on('toolbar(test)', function(obj){
+            layer.open({
+                type:1,
+                title:"教工信息添加",
+                content:$("#add").html(),
+            })
+
+        });
+
+        //删除
+        table.on('tool(test)', function(obj){ //注：tool 是工具条事件名，test 是 table 原始容器的属性 lay-filter="对应的值"
+            var data = obj.data //获得当前行数据
+                ,layEvent = obj.event; //获得 lay-event 对应的值
+            if(layEvent === 'del'){
+                layer.confirm('真的删除行么', function(index){
+                    $.ajax({
+                        url:'/userinfo/deleteTea?tid='+data.tid,
+                        type:'post',
+                        data:data.tid,
+                        dataType:'json',
+                        success:function(code){
+                            if(code==1){
+                                console.log(index);
+                                layer.msg("删除成功",{icon:1});
+                            }else{
+                                layer.msg("删除失败",{icon:5});
+                            }
+                        }
+                    });
+                    layer.close(index);
+                    obj.del();
+                    //向服务端发送删除指令
+                });
+            }
+            else if(obj.event === 'edit'){
+                layer.open({
+                    type:1,
+                    title:"教工信息更新",
+                    content:$("#update").html(),
+                });
+                form.val("up",{
+                    tid:data.tid,
+                    tname:data.tname,
+                    gender:data.gender,
+                    age:data.age
+                })
+                console.log(data.tname);
+            }
+        });
+    });
+</script>
+</body>
+</html>
